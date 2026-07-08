@@ -342,6 +342,22 @@ sqlite.exec(`
     updated_at TEXT NOT NULL,
     deleted_at TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS agent_tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent_type TEXT NOT NULL,
+    drama_id INTEGER NOT NULL,
+    episode_id INTEGER NOT NULL,
+    message TEXT,
+    status TEXT DEFAULT 'pending',
+    result TEXT,
+    error_msg TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    completed_at TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_agent_tasks_status
+    ON agent_tasks (status);
 `)
 
 function ensureColumn(table: string, column: string, definition: string) {

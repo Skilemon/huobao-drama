@@ -323,3 +323,17 @@ export const assets = sqliteTable('assets', {
   updatedAt: text('updated_at').notNull(),
   deletedAt: text('deleted_at'),
 })
+
+export const agentTasks = sqliteTable('agent_tasks', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  agentType: text('agent_type').notNull(),
+  dramaId: integer('drama_id').notNull(),
+  episodeId: integer('episode_id').notNull(),
+  message: text('message'),
+  status: text('status').default('pending'),
+  result: text('result'),
+  errorMsg: text('error_msg'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  completedAt: text('completed_at'),
+})
