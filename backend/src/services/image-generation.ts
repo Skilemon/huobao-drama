@@ -229,6 +229,22 @@ async function normalizeReferenceImages(raw: string | null | undefined): Promise
         return null
       }
     }
+    // 远程 URL：下载并转为 base64
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      try {
+        const resp = await fetch(value, { signal: AbortSignal.timeout(30_000) })
+        if (!resp.ok) {
+          logTaskWarn('ImageTask', 'reference-download-failed', { url: value, status: resp.status })
+          return value // 下载失败时保留原 URL
+        }
+        const buffer = Buffer.from(await resp.arrayBuffer())
+        const mimeType = resp.headers.get('content-type') || 'image/png'
+        return `data:${mimeType};base64,${buffer.toString('base64')}`
+      } catch (err) {
+        logTaskWarn('ImageTask', 'reference-download-error', { url: value, error: (err as Error).message })
+        return value // 下载失败时保留原 URL
+      }
+    }
     return value
   }))
 

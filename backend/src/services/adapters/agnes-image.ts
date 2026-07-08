@@ -31,17 +31,16 @@ export class AgnesImageAdapter implements ImageProviderAdapter {
       size,
     }
 
-    const extraBody: any = {}
+    const extraBody: any = {
+      response_format: 'url',
+    }
 
     const referenceImages = this.parseReferenceImages(record.referenceImages)
     if (referenceImages.length > 0) {
       extraBody.image = referenceImages
     }
 
-    // 只有 extra_body 内有实际内容时才添加
-    if (Object.keys(extraBody).length > 0) {
-      body.extra_body = extraBody
-    }
+    body.extra_body = extraBody
 
     return {
       url: joinProviderUrl(config.baseUrl, '/v1', '/images/generations'),
