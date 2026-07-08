@@ -50,16 +50,14 @@ export class AgnesVideoAdapter implements VideoProviderAdapter {
       } catch {}
     }
 
-    if (record.aspectRatio) {
-      const [w, h] = this.parseAspectRatio(record.aspectRatio)
-      body.width = w
-      body.height = h
-    } else {
-      body.width = 1920
-      body.height = 1080
-    }
+    const aspectRatio = record.aspectRatio || '16:9'
+    const [w, h] = this.parseAspectRatio(aspectRatio)
+    body.width = w
+    body.height = h
 
-    body.num_frames = this.computeNumFrames(record.duration)
+    // 根据分辨率限制最大帧数
+    const maxFrames = this.getMaxFrames(w, h)
+    body.num_frames = this.computeNumFrames(record.duration, maxFrames)
     body.frame_rate = 24
 
     return {
@@ -117,16 +115,24 @@ export class AgnesVideoAdapter implements VideoProviderAdapter {
     return result.url || result.video_url || null
   }
 
-  private computeNumFrames(duration?: number | null): number {
-    const seconds = Math.round(Number(duration || 5))
-    const targetFrames = Math.min(441, Math.max(9, seconds * 24))
-    return this.nearest8n1(targetFrames)
+  private getMaxFrames(width: number, height: number): number {
+    // 根据分辨率限制最大帧数
+    const maxDim = Math.max(width, height)
+    if (maxDim >= 1920) return 241  // 1080p
+    if (maxDim >= 1280) return 481  // 720p
+    return 961  // 480p
   }
 
-  private nearest8n1(target: number): number {
-    // num_frames must follow 8n+1 rule and be <= 441
+  private computeNumFrames(duration?: number | null, maxFrames: number = 241): number {
+    const seconds = Math.round(Number(duration || 5))
+    const targetFrames = Math.min(maxFrames, Math.max(9, seconds * 24))
+    return this.nearest8n1(targetFrames, maxFrames)
+  }
+
+  private nearest8n1(target: number, maxFrames: number = 441): number {
+    // num_frames must follow 8n+1 rule and be <= maxFrames
     const n = Math.round((target - 1) / 8)
-    return Math.min(441, Math.max(9, n * 8 + 1))
+    return Math.min(maxFrames, Math.max(9, n * 8 + 1))
   }
 
   private parseAspectRatio(ratio: string): [number, number] {
