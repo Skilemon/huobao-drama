@@ -16,6 +16,32 @@ export function createVoiceTools(episodeId: number, dramaId: number) {
     return config?.provider || null
   }
 
+  function ensureXiaomiVoices() {
+    const existing = db.select().from(schema.aiVoices)
+      .where(eq(schema.aiVoices.provider, 'xiaomi'))
+      .all()
+    if (existing.length > 0) return
+
+    const ts = now()
+    const voices = [
+      { voiceId: 'mimo_default', voiceName: 'MiMo-默认', description: '["默认音色","中性","通用"]', language: '中文' },
+      { voiceId: '冰糖', voiceName: '冰糖', description: '["女性","甜美女声","活泼清亮"]', language: '中文' },
+      { voiceId: '茉莉', voiceName: '茉莉', description: '["女性","温柔知性","优雅大方"]', language: '中文' },
+      { voiceId: '苏打', voiceName: '苏打', description: '["男性","阳光活力","年轻开朗"]', language: '中文' },
+      { voiceId: '白桦', voiceName: '白桦', description: '["男性","成熟稳重","深沉磁性"]', language: '中文' },
+      { voiceId: 'Mia', voiceName: 'Mia', description: '["女性","温柔自然","美式英语"]', language: '英语' },
+      { voiceId: 'Chloe', voiceName: 'Chloe', description: '["女性","活泼甜美","英语女声"]', language: '英语' },
+      { voiceId: 'Milo', voiceName: 'Milo', description: '["男性","温暖治愈","年轻男声"]', language: '英语' },
+      { voiceId: 'Dean', voiceName: 'Dean', description: '["男性","沉稳磁性","成熟男声"]', language: '英语' },
+    ]
+
+    db.insert(schema.aiVoices).values(
+      voices.map(v => ({ ...v, provider: 'xiaomi', createdAt: ts }))
+    ).run()
+
+    logTaskSuccess('VoiceTool', 'xiaomi-voices-seeded', { count: voices.length })
+  }
+
   const getCharacters = createTool({
     id: 'get_characters',
     description: 'Get all characters for the current drama with their current voice assignments.',
@@ -44,6 +70,7 @@ export function createVoiceTools(episodeId: number, dramaId: number) {
     inputSchema: z.object({}),
     execute: async () => {
       const provider = getEpisodeAudioProvider() || 'minimax'
+      if (provider === 'xiaomi') ensureXiaomiVoices()
       const rows = db.select().from(schema.aiVoices).where(eq(schema.aiVoices.provider, provider)).all()
       const voices = rows.length ? rows.map(v => {
         const desc = v.description ? JSON.parse(v.description) : []
