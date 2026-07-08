@@ -14,6 +14,7 @@ import { ViduVideoAdapter } from './vidu-video'
 import { AliImageAdapter } from './ali-image'
 import { AliVideoAdapter } from './ali-video'
 import { AgnesVideoAdapter } from './agnes-video'
+import { AgnesImageAdapter } from './agnes-image'
 import type { ImageProviderAdapter, VideoProviderAdapter, TTSProviderAdapter } from './types'
 
 // 图片 Adapter 注册表
@@ -25,8 +26,8 @@ export const imageAdapters: Record<string, ImageProviderAdapter> = {
   ali: new AliImageAdapter(),
   // Chatfire - 待确认 API 格式，暂用 OpenAI
   chatfire: new OpenAIImageAdapter(),
-  // Agnes 图片使用 DALL-E 兼容格式 /v1/images/generations，模型 agnes-image-2.1-flash
-  agnes: new OpenAIImageAdapter(),
+  // Agnes 图片使用 /v1/images/generations，但 response_format 和参考图需放在 extra_body 中
+  agnes: new AgnesImageAdapter(),
 }
 
 // 视频 Adapter 注册表
