@@ -54,10 +54,8 @@ export class AgnesImageAdapter implements ImageProviderAdapter {
   }
 
   parseGenerateResponse(result: any): ImageGenResponse {
-    if (result.task_id || result.id) {
-      return { isAsync: true, taskId: result.task_id || result.id }
-    }
-    const imageUrl = result.data?.[0]?.url || result.url
+    // 优先检查同步响应：data[0].url 或 data[0].b64_json
+    const imageUrl = result.data?.[0]?.url
     if (imageUrl) {
       return { isAsync: false, imageUrl }
     }
@@ -65,6 +63,15 @@ export class AgnesImageAdapter implements ImageProviderAdapter {
     if (b64) {
       return { isAsync: false, imageUrl: undefined }
     }
+    // 兼容 result.url 格式
+    if (result.url) {
+      return { isAsync: false, imageUrl: result.url }
+    }
+    // 只有明确有 task_id 且没有 url 时才认为是异步模式
+    if (result.task_id) {
+      return { isAsync: true, taskId: result.task_id }
+    }
+    // result.id 是响应对象本身的 ID，不是异步任务 ID，不作为异步判断依据
     throw new Error('No image URL in response')
   }
 
