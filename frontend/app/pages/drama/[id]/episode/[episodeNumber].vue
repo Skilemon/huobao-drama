@@ -2890,9 +2890,10 @@ function mapVoiceProfile(v) {
 async function loadVoices() {
   try {
     let provider = lockedAudioProvider.value
-    // If no provider from episode config, try to get from first available audio config
+    // If no provider from episode config, try to get from first available audio config (sorted by priority desc)
     if (!provider && audioConfigs.value.length > 0) {
-      provider = audioConfigs.value[0].provider
+      const sorted = [...audioConfigs.value].sort((a, b) => (b.priority || 0) - (a.priority || 0))
+      provider = sorted[0].provider
     }
     if (!provider) provider = 'minimax'
     
@@ -2903,7 +2904,8 @@ async function loadVoices() {
     console.error('Failed to load voices', e)
     let provider = lockedAudioProvider.value
     if (!provider && audioConfigs.value.length > 0) {
-      provider = audioConfigs.value[0].provider
+      const sorted = [...audioConfigs.value].sort((a, b) => (b.priority || 0) - (a.priority || 0))
+      provider = sorted[0].provider
     }
     if (!provider) provider = 'minimax'
     voiceProfiles.value = provider === 'xiaomi' ? xiaomiFallbackVoiceProfiles : fallbackVoiceProfiles

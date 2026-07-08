@@ -15,9 +15,11 @@ export function createVoiceTools(episodeId: number, dramaId: number) {
       const [config] = db.select().from(schema.aiServiceConfigs).where(eq(schema.aiServiceConfigs.id, episode.audioConfigId)).all()
       if (config?.provider) return config.provider
     }
-    // 回退：使用第一个可用的音频配置（与前端逻辑一致）
+    // 回退：使用第一个可用的音频配置（按 priority 降序）
     const configs = db.select().from(schema.aiServiceConfigs)
-      .where(eq(schema.aiServiceConfigs.serviceType, 'audio')).all()
+      .where(eq(schema.aiServiceConfigs.serviceType, 'audio'))
+      .all()
+      .sort((a, b) => (b.priority || 0) - (a.priority || 0))
     return configs[0]?.provider || null
   }
 

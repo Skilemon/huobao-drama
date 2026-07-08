@@ -198,9 +198,18 @@ async function loadConfigs() {
     imageConfigs.value = imgs || []
     videoConfigs.value = vids || []
     audioConfigs.value = auds || []
-    if (!newEpisodeImageConfigId.value && imageConfigs.value.length) newEpisodeImageConfigId.value = imageConfigs.value[0].id
-    if (!newEpisodeVideoConfigId.value && videoConfigs.value.length) newEpisodeVideoConfigId.value = videoConfigs.value[0].id
-    if (!newEpisodeAudioConfigId.value && audioConfigs.value.length) newEpisodeAudioConfigId.value = audioConfigs.value[0].id
+    if (!newEpisodeImageConfigId.value && imageConfigs.value.length) {
+      const sorted = [...imageConfigs.value].sort((a, b) => (b.priority || 0) - (a.priority || 0))
+      newEpisodeImageConfigId.value = sorted[0].id
+    }
+    if (!newEpisodeVideoConfigId.value && videoConfigs.value.length) {
+      const sorted = [...videoConfigs.value].sort((a, b) => (b.priority || 0) - (a.priority || 0))
+      newEpisodeVideoConfigId.value = sorted[0].id
+    }
+    if (!newEpisodeAudioConfigId.value && audioConfigs.value.length) {
+      const sorted = [...audioConfigs.value].sort((a, b) => (b.priority || 0) - (a.priority || 0))
+      newEpisodeAudioConfigId.value = sorted[0].id
+    }
   } catch (e) {
     toast.error(e.message)
   }
