@@ -110,48 +110,84 @@ async function processImageGeneration(id: number, config: AIConfig) {
       body,
     })
 
-    const resp = await fetch(url, {
-      method,
-      headers,
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(600_000),
-    })
+    const maxRetries = 3
+    let lastError: Error | null = null
 
-    if (!resp.ok) throw new Error(`API error ${resp.status}: ${await resp.text()}`)
-    const result = await resp.json() as any
-    logTaskPayload('ImageTask', 'response payload', {
-      id,
-      provider: config.provider,
-      result,
-    })
-
-    const { isAsync, taskId, imageUrl } = adapter.parseGenerateResponse(result)
-
-    if (!isAsync && imageUrl) {
-      logTaskProgress('ImageTask', 'sync-complete', { id, imageUrl })
-      // 同步模式：直接下载图片
-      await handleImageComplete(id, config.provider, imageUrl)
-      return
-    }
-
-    if (!isAsync && !imageUrl) {
-      // 同步模式但无 URL（Gemini 等返回 base64）
-      const b64 = adapter.extractImageBase64(result)
-      if (b64) {
-        logTaskProgress('ImageTask', 'sync-base64-complete', { id, mimeType: b64.mimeType })
-        await handleImageCompleteBase64(id, config.provider, b64.data, b64.mimeType)
-        return
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      if (attempt > 0) {
+        const delay = attempt * 5000 // 5s, 10s, 15s
+        logTaskProgress('ImageTask', 'retry', { id, attempt, delay })
+        await new Promise(r => setTimeout(r, delay))
       }
-      throw new Error('No image URL or base64 data in response')
+
+      try {
+        const resp = await fetch(url, {
+          method,
+          headers,
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(600_000),
+        })
+
+        if (resp.ok) {
+          const result = await resp.json() as any
+          logTaskPayload('ImageTask', 'response payload', {
+            id,
+            provider: config.provider,
+            result,
+          })
+
+          const { isAsync, taskId, imageUrl } = adapter.parseGenerateResponse(result)
+
+          if (!isAsync && imageUrl) {
+            logTaskProgress('ImageTask', 'sync-complete', { id, imageUrl })
+            // 同步模式：直接下载图片
+            await handleImageComplete(id, config.provider, imageUrl)
+            return
+          }
+
+          if (!isAsync && !imageUrl) {
+            // 同步模式但无 URL（Gemini 等返回 base64）
+            const b64 = adapter.extractImageBase64(result)
+            if (b64) {
+              logTaskProgress('ImageTask', 'sync-base64-complete', { id, mimeType: b64.mimeType })
+              await handleImageCompleteBase64(id, config.provider, b64.data, b64.mimeType)
+              return
+            }
+            throw new Error('No image URL or base64 data in response')
+          }
+
+          // 异步模式：更新 taskId，开始轮询
+          db.update(schema.imageGenerations)
+            .set({ taskId, status: 'processing', updatedAt: now() })
+            .where(eq(schema.imageGenerations.id, id))
+            .run()
+          logTaskProgress('ImageTask', 'poll-start', { id, taskId, provider: config.provider })
+          pollImageTask(id, config, taskId!)
+          return
+        }
+
+        // 503 错误时重试
+        if (resp.status === 503) {
+          const errorText = await resp.text()
+          lastError = new Error(`API error ${resp.status}: ${errorText}`)
+          logTaskWarn('ImageTask', 'retry-503', { id, attempt, error: errorText })
+          continue
+        }
+
+        // 其他错误不重试
+        throw new Error(`API error ${resp.status}: ${await resp.text()}`)
+      } catch (err: any) {
+        if (err.message?.includes('503') && attempt < maxRetries) {
+          lastError = err
+          logTaskWarn('ImageTask', 'retry-error-503', { id, attempt, error: err.message })
+          continue
+        }
+        throw err
+      }
     }
 
-    // 异步模式：更新 taskId，开始轮询
-    db.update(schema.imageGenerations)
-      .set({ taskId, status: 'processing', updatedAt: now() })
-      .where(eq(schema.imageGenerations.id, id))
-      .run()
-    logTaskProgress('ImageTask', 'poll-start', { id, taskId, provider: config.provider })
-    pollImageTask(id, config, taskId!)
+    // 所有重试都失败
+    throw lastError || new Error('Max retries exceeded')
   } catch (err: any) {
     logTaskError('ImageTask', 'process', { id, provider: config.provider, error: err.message })
     db.update(schema.imageGenerations)
