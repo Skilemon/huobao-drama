@@ -11,12 +11,50 @@ import { joinProviderUrl } from '../services/adapters/url.js'
 
 const app = new Hono()
 
+function ensureXiaomiVoices() {
+  const existing = db.select().from(schema.aiVoices)
+    .where(eq(schema.aiVoices.provider, 'xiaomi'))
+    .all()
+  if (existing.length > 0) return
+
+  const ts = now()
+  const voices = [
+    { voiceId: 'mimo_default', voiceName: 'MiMo-默认', description: '["默认音色","中性","通用"]', language: '中文' },
+    { voiceId: '冰糖', voiceName: '冰糖', description: '["女性","甜美女声","活泼清亮"]', language: '中文' },
+    { voiceId: '茉莉', voiceName: '茉莉', description: '["女性","温柔知性","优雅大方"]', language: '中文' },
+    { voiceId: '苏打', voiceName: '苏打', description: '["男性","阳光活力","年轻开朗"]', language: '中文' },
+    { voiceId: '白桦', voiceName: '白桦', description: '["男性","成熟稳重","深沉磁性"]', language: '中文' },
+    { voiceId: 'Mia', voiceName: 'Mia', description: '["女性","温柔自然","美式英语"]', language: '英语' },
+    { voiceId: 'Chloe', voiceName: 'Chloe', description: '["女性","活泼甜美","英语女声"]', language: '英语' },
+    { voiceId: 'Milo', voiceName: 'Milo', description: '["男性","温暖治愈","年轻男声"]', language: '英语' },
+    { voiceId: 'Dean', voiceName: 'Dean', description: '["男性","沉稳磁性","成熟男声"]', language: '英语' },
+  ]
+
+  db.insert(schema.aiVoices).values(
+    voices.map(v => ({ ...v, provider: 'xiaomi', createdAt: ts }))
+  ).run()
+}
+
 // GET /ai-voices?provider=minimax
 app.get('/', async (c) => {
   const provider = c.req.query('provider') || 'minimax'
-  const rows = db.select().from(schema.aiVoices)
+  
+  // Ensure xiaomi voices exist in database
+  if (provider === 'xiaomi') {
+    ensureXiaomiVoices()
+  }
+  
+  let rows = db.select().from(schema.aiVoices)
     .where(eq(schema.aiVoices.provider, provider))
     .all()
+
+  // If no voices found for xiaomi, try to ensure and query again
+  if (rows.length === 0 && provider === 'xiaomi') {
+    ensureXiaomiVoices()
+    rows = db.select().from(schema.aiVoices)
+      .where(eq(schema.aiVoices.provider, provider))
+      .all()
+  }
 
   const parsed = rows.map(r => ({
     voice_id: r.voiceId,

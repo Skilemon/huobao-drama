@@ -71,7 +71,14 @@ export function createVoiceTools(episodeId: number, dramaId: number) {
     execute: async () => {
       const provider = getEpisodeAudioProvider() || 'minimax'
       if (provider === 'xiaomi') ensureXiaomiVoices()
-      const rows = db.select().from(schema.aiVoices).where(eq(schema.aiVoices.provider, provider)).all()
+      let rows = db.select().from(schema.aiVoices).where(eq(schema.aiVoices.provider, provider)).all()
+      
+      // If no voices found for xiaomi, try to ensure and query again
+      if (rows.length === 0 && provider === 'xiaomi') {
+        ensureXiaomiVoices()
+        rows = db.select().from(schema.aiVoices).where(eq(schema.aiVoices.provider, provider)).all()
+      }
+      
       const voices = rows.length ? rows.map(v => {
         const desc = v.description ? JSON.parse(v.description) : []
         return {
@@ -112,6 +119,33 @@ export function createVoiceTools(episodeId: number, dramaId: number) {
     }),
     execute: async ({ character_id, voice_id, reason }) => {
       const provider = getEpisodeAudioProvider() || 'minimax'
+      
+      // Validate voice_id exists in database for this provider
+      if (provider === 'xiaomi') {
+        ensureXiaomiVoices()
+      }
+      const voiceExists = db.select().from(schema.aiVoices)
+        .where(eq(schema.aiVoices.provider, provider))
+        .all()
+        .some(v => v.voiceId === voice_id)
+      
+      if (!voiceExists) {
+        // For xiaomi provider, try to ensure voices and check again
+        if (provider === 'xiaomi') {
+          ensureXiaomiVoices()
+          const voiceExistsAfterEnsure = db.select().from(schema.aiVoices)
+            .where(eq(schema.aiVoices.provider, provider))
+            .all()
+            .some(v => v.voiceId === voice_id)
+          
+          if (!voiceExistsAfterEnsure) {
+            throw new Error(`Voice "${voice_id}" is not available for provider "${provider}". Available voices: ${db.select().from(schema.aiVoices).where(eq(schema.aiVoices.provider, provider)).all().map(v => v.voiceId).join(', ')}`)
+          }
+        } else {
+          throw new Error(`Voice "${voice_id}" is not available for provider "${provider}"`)
+        }
+      }
+      
       logTaskProgress('VoiceTool', 'assign-begin', { episodeId, dramaId, characterId: character_id, voiceId: voice_id, provider, reason })
       db.update(schema.characters)
         .set({ voiceStyle: voice_id, voiceProvider: provider, voiceSampleUrl: null, updatedAt: now() })

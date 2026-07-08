@@ -1480,6 +1480,18 @@ const fallbackVoiceProfiles = [
   { id: 'nova', label: 'Nova', gender: '女声', traits: '温柔、甜润、亲和', suitable: '女主、母亲、柔和配角' },
   { id: 'shimmer', label: 'Shimmer', gender: '女声', traits: '明亮、活泼、年轻', suitable: '少女、轻快角色、跳脱配角' },
 ]
+
+const xiaomiFallbackVoiceProfiles = [
+  { id: 'mimo_default', label: 'MiMo-默认', gender: '中性', traits: '默认音色、通用', suitable: '通用角色、旁白' },
+  { id: '冰糖', label: '冰糖', gender: '女声', traits: '甜美女声、活泼清亮', suitable: '年轻女性、活泼角色' },
+  { id: '茉莉', label: '茉莉', gender: '女声', traits: '温柔知性、优雅大方', suitable: '知性女性、优雅角色' },
+  { id: '苏打', label: '苏打', gender: '男声', traits: '阳光活力、年轻开朗', suitable: '年轻男性、阳光角色' },
+  { id: '白桦', label: '白桦', gender: '男声', traits: '成熟稳重、深沉磁性', suitable: '成熟男性、稳重角色' },
+  { id: 'Mia', label: 'Mia', gender: '女声', traits: '温柔自然、美式英语', suitable: '英语女性角色' },
+  { id: 'Chloe', label: 'Chloe', gender: '女声', traits: '活泼甜美、英语女声', suitable: '英语年轻女性' },
+  { id: 'Milo', label: 'Milo', gender: '男声', traits: '温暖治愈、年轻男声', suitable: '英语年轻男性' },
+  { id: 'Dean', label: 'Dean', gender: '男声', traits: '沉稳磁性、成熟男声', suitable: '英语成熟男性' },
+]
 const voiceProfiles = ref(fallbackVoiceProfiles)
 const voiceSelectOptions = computed(() => voiceProfiles.value.map(v => ({ label: `${v.label} · ${v.traits}`, value: v.id })))
 const videoConfigSelectOptions = computed(() => videoConfigs.value.map(c => {
@@ -2879,10 +2891,12 @@ async function loadVoices() {
   try {
     const provider = lockedAudioProvider.value || 'minimax'
     const rows = await voicesAPI.list(provider)
-    voiceProfiles.value = rows?.length ? rows.map(mapVoiceProfile) : fallbackVoiceProfiles
+    const fallback = provider === 'xiaomi' ? xiaomiFallbackVoiceProfiles : fallbackVoiceProfiles
+    voiceProfiles.value = rows?.length ? rows.map(mapVoiceProfile) : fallback
   } catch (e) {
     console.error('Failed to load voices', e)
-    voiceProfiles.value = fallbackVoiceProfiles
+    const provider = lockedAudioProvider.value || 'minimax'
+    voiceProfiles.value = provider === 'xiaomi' ? xiaomiFallbackVoiceProfiles : fallbackVoiceProfiles
   }
 }
 
