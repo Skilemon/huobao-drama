@@ -59,11 +59,22 @@ function buildProbe(serviceType: string, provider: string, baseUrl: string, mode
     return { method: 'POST', url: url.toString(), headers: geminiHeaders(apiKey, true), body: {} }
   }
 
-  if (p === 'openai' || p === 'openrouter' || p === 'chatfire') {
+  if (p === 'openai' || p === 'openrouter' || p === 'chatfire' || p === 'agnes') {
     return {
       method: 'GET',
       url: joinProviderUrl(baseUrl, '/v1', '/models'),
       headers: bearerHeaders(apiKey),
+      body: undefined,
+    }
+  }
+
+  if (p === 'xiaomi') {
+    const headers: Record<string, string> = {}
+    if (apiKey) headers['api-key'] = apiKey
+    return {
+      method: 'GET',
+      url: joinProviderUrl(baseUrl, '/v1', '/models'),
+      headers,
       body: undefined,
     }
   }

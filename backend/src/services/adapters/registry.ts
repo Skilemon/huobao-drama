@@ -5,6 +5,7 @@
 import { MiniMaxImageAdapter } from './minimax-image'
 import { MiniMaxVideoAdapter } from './minimax-video'
 import { MiniMaxTTSAdapter } from './minimax-tts'
+import { XiaomiTTSAdapter } from './xiaomi-tts'
 import { OpenAIImageAdapter } from './openai-image'
 import { GeminiImageAdapter } from './gemini-image'
 import { VolcEngineImageAdapter } from './volcengine-image'
@@ -12,6 +13,7 @@ import { VolcEngineVideoAdapter } from './volcengine-video'
 import { ViduVideoAdapter } from './vidu-video'
 import { AliImageAdapter } from './ali-image'
 import { AliVideoAdapter } from './ali-video'
+import { AgnesVideoAdapter } from './agnes-video'
 import type { ImageProviderAdapter, VideoProviderAdapter, TTSProviderAdapter } from './types'
 
 // 图片 Adapter 注册表
@@ -23,6 +25,8 @@ export const imageAdapters: Record<string, ImageProviderAdapter> = {
   ali: new AliImageAdapter(),
   // Chatfire - 待确认 API 格式，暂用 OpenAI
   chatfire: new OpenAIImageAdapter(),
+  // Agnes 图片使用 DALL-E 兼容格式 /v1/images/generations，模型 agnes-image-2.1-flash
+  agnes: new OpenAIImageAdapter(),
 }
 
 // 视频 Adapter 注册表
@@ -31,12 +35,14 @@ export const videoAdapters: Record<string, VideoProviderAdapter> = {
   volcengine: new VolcEngineVideoAdapter(),
   vidu: new ViduVideoAdapter(),
   ali: new AliVideoAdapter(),
+  agnes: new AgnesVideoAdapter(),
   // Chatfire 视频 - 待确认 API 格式
 }
 
 // TTS Adapter 注册表
 export const ttsAdapters: Record<string, TTSProviderAdapter> = {
   minimax: new MiniMaxTTSAdapter(),
+  xiaomi: new XiaomiTTSAdapter(),
 }
 
 export function getTTSAdapter(provider: string): TTSProviderAdapter {
