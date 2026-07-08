@@ -2889,19 +2889,29 @@ function mapVoiceProfile(v) {
 
 async function loadVoices() {
   try {
-    const provider = lockedAudioProvider.value || 'minimax'
+    let provider = lockedAudioProvider.value
+    // If no provider from episode config, try to get from first available audio config
+    if (!provider && audioConfigs.value.length > 0) {
+      provider = audioConfigs.value[0].provider
+    }
+    if (!provider) provider = 'minimax'
+    
     const rows = await voicesAPI.list(provider)
     const fallback = provider === 'xiaomi' ? xiaomiFallbackVoiceProfiles : fallbackVoiceProfiles
     voiceProfiles.value = rows?.length ? rows.map(mapVoiceProfile) : fallback
   } catch (e) {
     console.error('Failed to load voices', e)
-    const provider = lockedAudioProvider.value || 'minimax'
+    let provider = lockedAudioProvider.value
+    if (!provider && audioConfigs.value.length > 0) {
+      provider = audioConfigs.value[0].provider
+    }
+    if (!provider) provider = 'minimax'
     voiceProfiles.value = provider === 'xiaomi' ? xiaomiFallbackVoiceProfiles : fallbackVoiceProfiles
   }
 }
 
 watch([lockedAudioConfigId, audioConfigs], () => { loadVoices() }, { deep: true })
-onMounted(() => { refresh(); loadConfigs(); loadVoices() })
+onMounted(async () => { await refresh(); await loadConfigs(); loadVoices() })
 </script>
 
 <style scoped>
