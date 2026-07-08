@@ -29,18 +29,11 @@ export const requestLogger: MiddlewareHandler = async (c, next) => {
   const path = c.req.path
   const start = performance.now()
 
-  // 打印请求
   const time = formatTime()
+  const contentLength = c.req.header('content-length')
   let bodyInfo = ''
-  if (['POST', 'PUT', 'PATCH'].includes(method)) {
-    try {
-      const clone = c.req.raw.clone()
-      const text = await clone.text()
-      if (text) {
-        const truncated = text.length > 500 ? text.slice(0, 500) + '...' : text
-        bodyInfo = `\n  ${colors.dim}body: ${truncated}${colors.reset}`
-      }
-    } catch {}
+  if (['POST', 'PUT', 'PATCH'].includes(method) && contentLength) {
+    bodyInfo = `\n  ${colors.dim}body-size: ${contentLength}${colors.reset}`
   }
 
   console.log(`${colors.dim}${time}${colors.reset} ${colors.cyan}${method}${colors.reset} ${path}${bodyInfo}`)

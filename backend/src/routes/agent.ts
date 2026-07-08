@@ -53,10 +53,24 @@ app.post('/:type/chat', async (c) => {
   const startTime = performance.now()
 
   try {
-    const result = await agent.generate(
-      [{ role: 'user', content: message }],
-      { maxSteps: 20 },
-    )
+    const abortController = new AbortController()
+    const timeoutMs = 5 * 60 * 1000
+    const timeout = setTimeout(() => abortController.abort(), timeoutMs)
+
+    let result: any
+    try {
+      result = await agent.generate(
+        [{ role: 'user', content: message }],
+        { maxSteps: 20, abortSignal: abortController.signal as any },
+      )
+    } finally {
+      clearTimeout(timeout)
+    }
+
+    if (abortController.signal.aborted) {
+      logTaskError('Agent', agentType, { reason: 'execution timed out', timeoutMs })
+      return badRequest(c, `Agent execution timed out after ${timeoutMs / 1000}s`)
+    }
 
     const elapsed = ((performance.now() - startTime) / 1000).toFixed(1)
     logTaskSuccess('Agent', agentType, { elapsedSeconds: elapsed })

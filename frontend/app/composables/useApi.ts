@@ -9,7 +9,24 @@ async function req<T = any>(method: string, path: string, body?: any): Promise<T
 
   try {
     const resp = await fetch(`${BASE}${path}`, opts)
-    const json = await resp.json()
+    const contentType = resp.headers.get('content-type') || ''
+    const isJson = contentType.includes('application/json')
+
+    let json: any
+    if (isJson) {
+      const text = await resp.text()
+      if (!text) {
+        throw new Error('服务器返回了空响应，可能是请求超时或服务异常')
+      }
+      try {
+        json = JSON.parse(text)
+      } catch {
+        throw new Error(`服务器返回了无效的响应格式 (${resp.status})`)
+      }
+    } else {
+      const text = await resp.text()
+      throw new Error(`服务器返回了非JSON响应 (${resp.status}): ${text.slice(0, 200)}`)
+    }
     const ms = Math.round(performance.now() - start)
 
     if (!resp.ok || (json.code && json.code >= 400)) {
