@@ -38,3 +38,12 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
   - 提交代码时直接提交到主分支（master），不需要创建新分支
   - 不需要遵循submodule-commit-workflow规则中的分支创建流程
   - 直接git add, git commit, git push到主分支
+
+[小米TTS音色加载时序问题]
+- Date: 2026-07-08
+- Context: Agent在修复小米TTS音色分配问题时发现
+- Category: 排错调试
+- Instructions:
+  - 前端loadVoices函数需要在loadConfigs完成后再调用，否则audioConfigs为空导致provider获取失败
+  - 当lockedAudioProvider为空时，应尝试从第一个可用音频配置获取provider
+  - onMounted中的异步函数需要使用await确保执行顺序
