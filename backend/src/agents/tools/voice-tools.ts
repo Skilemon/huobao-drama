@@ -11,9 +11,14 @@ import { logTaskProgress, logTaskSuccess } from '../../utils/task-logger.js'
 export function createVoiceTools(episodeId: number, dramaId: number) {
   function getEpisodeAudioProvider() {
     const [episode] = db.select().from(schema.episodes).where(eq(schema.episodes.id, episodeId)).all()
-    if (!episode?.audioConfigId) return null
-    const [config] = db.select().from(schema.aiServiceConfigs).where(eq(schema.aiServiceConfigs.id, episode.audioConfigId)).all()
-    return config?.provider || null
+    if (episode?.audioConfigId) {
+      const [config] = db.select().from(schema.aiServiceConfigs).where(eq(schema.aiServiceConfigs.id, episode.audioConfigId)).all()
+      if (config?.provider) return config.provider
+    }
+    // 回退：使用第一个可用的音频配置（与前端逻辑一致）
+    const configs = db.select().from(schema.aiServiceConfigs)
+      .where(eq(schema.aiServiceConfigs.serviceType, 'audio')).all()
+    return configs[0]?.provider || null
   }
 
   function ensureXiaomiVoices() {
@@ -44,13 +49,18 @@ export function createVoiceTools(episodeId: number, dramaId: number) {
 
   const getCharacters = createTool({
     id: 'get_characters',
-    description: 'Get all characters for the current drama with their current voice assignments.',
+    description: 'Get characters for the current episode with their current voice assignments.',
     inputSchema: z.object({}),
     execute: async () => {
-      const chars = db.select().from(schema.characters)
+      // 只查询当前集关联的角色
+      const links = db.select().from(schema.episodeCharacters)
+        .where(eq(schema.episodeCharacters.episodeId, episodeId)).all()
+      const charIds = links.map((l: any) => l.characterId)
+      const allChars = db.select().from(schema.characters)
         .where(eq(schema.characters.dramaId, dramaId)).all()
+      const chars = allChars.filter((c: any) => charIds.includes(c.id) && !c.deletedAt)
       const payload = {
-        characters: chars.map(c => ({
+        characters: chars.map((c: any) => ({
           id: c.id,
           name: c.name,
           role: c.role,
